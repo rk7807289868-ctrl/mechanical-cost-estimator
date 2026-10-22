@@ -26,7 +26,7 @@ def check_password():
         return False
     return True
 
-# 2. PDF Generator Function with Cost Breakdown
+# 2. PDF Generator Function with Cost Breakdown & Perimeter
 def create_pdf_quotation(summary_df, total_cost):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
@@ -43,11 +43,12 @@ def create_pdf_quotation(summary_df, total_cost):
     
     # Table Header
     pdf.set_font("Arial", "B", 9)
-    pdf.cell(45, 10, "File Name", 1)
-    pdf.cell(25, 10, "Material", 1)
-    pdf.cell(18, 10, "Thick", 1)
-    pdf.cell(35, 10, "Blank Size", 1)
-    pdf.cell(22, 10, "Weight", 1)
+    pdf.cell(40, 10, "File Name", 1)
+    pdf.cell(22, 10, "Material", 1)
+    pdf.cell(15, 10, "Thick", 1)
+    pdf.cell(32, 10, "Blank Size", 1)
+    pdf.cell(20, 10, "Weight", 1)
+    pdf.cell(25, 10, "Perimeter", 1)
     pdf.cell(25, 10, "Cut Len", 1)
     pdf.cell(25, 10, "Mat. Cost", 1)
     pdf.cell(25, 10, "Cut Cost", 1)
@@ -57,12 +58,13 @@ def create_pdf_quotation(summary_df, total_cost):
     # Table Rows
     pdf.set_font("Arial", "", 8)
     for _, row in summary_df.iterrows():
-        file_nm = str(row.get('File Name', 'Part'))[:18]
-        pdf.cell(45, 8, file_nm, 1)
-        pdf.cell(25, 8, str(row.get('Material', '')), 1)
-        pdf.cell(18, 8, str(row.get('Thick (mm)', '')), 1)
-        pdf.cell(35, 8, str(row.get('Blank Size (mm)', '')), 1)
-        pdf.cell(22, 8, f"{row.get('Weight (kg)', 0):.2f}", 1)
+        file_nm = str(row.get('File Name', 'Part'))[:16]
+        pdf.cell(40, 8, file_nm, 1)
+        pdf.cell(22, 8, str(row.get('Material', '')), 1)
+        pdf.cell(15, 8, str(row.get('Thick (mm)', '')), 1)
+        pdf.cell(32, 8, str(row.get('Blank Size (mm)', '')), 1)
+        pdf.cell(20, 8, f"{row.get('Weight (kg)', 0):.2f}", 1)
+        pdf.cell(25, 8, f"{row.get('Perimeter (mm)', 0):.1f}", 1)
         pdf.cell(25, 8, f"{row.get('Cut Length (mm)', 0):.1f}", 1)
         pdf.cell(25, 8, f"{row.get('Mat. Cost (Rs.)', 0):.1f}", 1)
         pdf.cell(25, 8, f"{row.get('Cut Cost (Rs.)', 0):.1f}", 1)
@@ -73,7 +75,7 @@ def create_pdf_quotation(summary_df, total_cost):
     pdf.output(temp_pdf.name)
     return temp_pdf.name
 
-# 3. Robust DXF Visual Preview Function (Supports LWPOLYLINE & Circles)
+# 3. DXF Visual Preview Function
 def plot_dxf_file(tmp_path):
     fig, ax = plt.subplots(figsize=(5, 5))
     try:
@@ -149,7 +151,7 @@ if check_password():
                     st.text(uploaded_file.name[:25])
                     fig = plot_dxf_file(tmp_path)
                     st.pyplot(fig)
-                    plt.close(fig) # Clear memory
+                    plt.close(fig)
 
                 doc = ezdxf.readfile(tmp_path)
                 msp = doc.modelspace()
@@ -188,6 +190,9 @@ if check_password():
                 width = max(0.0, max_x - min_x) if min_x != float('inf') else 0.0
                 height = max(0.0, max_y - min_y) if min_y != float('inf') else 0.0
                 
+                # Perimeter calculation of the bounding box / part outline approximation
+                perimeter_val = 2 * (width + height)
+
                 volume_cm3 = (width * height * thickness) / 1000.0
                 weight_kg = (volume_cm3 * material_density) / 1000.0
 
@@ -205,6 +210,7 @@ if check_password():
                     "Thick (mm)": thickness,
                     "Blank Size (mm)": f"{width:.1f} x {height:.1f}",
                     "Weight (kg)": weight_kg,
+                    "Perimeter (mm)": perimeter_val,
                     "Cut Length (mm)": total_cut_length,
                     "Mat. Cost (Rs.)": mat_cost,
                     "Cut Cost (Rs.)": cut_cost,

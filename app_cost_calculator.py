@@ -28,7 +28,7 @@ def check_password():
 
 # 2. PDF Generator Function with Cost Breakdown
 def create_pdf_quotation(summary_df, total_cost):
-    pdf = FPDF()
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     
     # Title
@@ -44,23 +44,29 @@ def create_pdf_quotation(summary_df, total_cost):
     # Table Header
     pdf.set_font("Arial", "B", 9)
     pdf.cell(45, 10, "File Name", 1)
-    pdf.cell(25, 10, "Weight(kg)", 1)
-    pdf.cell(30, 10, "Cut Len(mm)", 1)
-    pdf.cell(30, 10, "Mat. Cost", 1)
-    pdf.cell(30, 10, "Cut Cost", 1)
-    pdf.cell(30, 10, "Total (Rs.)", 1)
+    pdf.cell(25, 10, "Material", 1)
+    pdf.cell(18, 10, "Thick", 1)
+    pdf.cell(35, 10, "Blank Size", 1)
+    pdf.cell(22, 10, "Weight", 1)
+    pdf.cell(25, 10, "Cut Len", 1)
+    pdf.cell(25, 10, "Mat. Cost", 1)
+    pdf.cell(25, 10, "Cut Cost", 1)
+    pdf.cell(25, 10, "Total (Rs.)", 1)
     pdf.ln()
     
     # Table Rows
-    pdf.set_font("Arial", "", 9)
+    pdf.set_font("Arial", "", 8)
     for _, row in summary_df.iterrows():
         file_nm = str(row.get('File Name', 'Part'))[:18]
-        pdf.cell(45, 10, file_nm, 1)
-        pdf.cell(25, 10, f"{row.get('Weight (kg)', 0):.2f}", 1)
-        pdf.cell(30, 10, f"{row.get('Cut Length (mm)', 0):.1f}", 1)
-        pdf.cell(30, 10, f"{row.get('Mat. Cost (Rs.)', 0):.1f}", 1)
-        pdf.cell(30, 10, f"{row.get('Cut Cost (Rs.)', 0):.1f}", 1)
-        pdf.cell(30, 10, f"{row.get('Total Cost (Rs.)', 0):.1f}", 1)
+        pdf.cell(45, 8, file_nm, 1)
+        pdf.cell(25, 8, str(row.get('Material', '')), 1)
+        pdf.cell(18, 8, str(row.get('Thick (mm)', '')), 1)
+        pdf.cell(35, 8, str(row.get('Blank Size (mm)', '')), 1)
+        pdf.cell(22, 8, f"{row.get('Weight (kg)', 0):.2f}", 1)
+        pdf.cell(25, 8, f"{row.get('Cut Length (mm)', 0):.1f}", 1)
+        pdf.cell(25, 8, f"{row.get('Mat. Cost (Rs.)', 0):.1f}", 1)
+        pdf.cell(25, 8, f"{row.get('Cut Cost (Rs.)', 0):.1f}", 1)
+        pdf.cell(25, 8, f"{row.get('Total Cost (Rs.)', 0):.1f}", 1)
         pdf.ln()
         
     temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
@@ -178,6 +184,7 @@ if check_password():
                     "File Name": uploaded_file.name,
                     "Material": material_type,
                     "Thick (mm)": thickness,
+                    "Blank Size (mm)": f"{width:.1f} x {height:.1f}",
                     "Weight (kg)": weight_kg,
                     "Cut Length (mm)": total_cut_length,
                     "Mat. Cost (Rs.)": mat_cost,
@@ -198,7 +205,6 @@ if check_password():
 
             st.success(f"**Total Estimated Project Cost: Rs. {total_project_cost:,.2f}**")
 
-            # PDF Download Button
             st.markdown("---")
             if st.button("📄 Generate PDF Quotation"):
                 pdf_file_path = create_pdf_quotation(df_results, total_project_cost)

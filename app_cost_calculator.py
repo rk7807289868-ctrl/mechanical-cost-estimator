@@ -4,6 +4,7 @@ import ezdxf
 import tempfile
 import os
 from fpdf import FPDF
+import matplotlib.pyplot as plt
 
 # Page Configuration
 st.set_page_config(page_title="Mechanical Cost Estimator", layout="wide")
@@ -62,16 +63,39 @@ def create_pdf_quotation(summary_df, total_cost):
     pdf.output(temp_pdf.name)
     return temp_pdf.name
 
-# 3. Main Application Logic
+# 3. DXF Visual Preview Function
+def plot_dxf_file(tmp_path):
+    fig, ax = plt.subplots(figsize=(5, 5))
+    try:
+        doc = ezdxf.readfile(tmp_path)
+        msp = doc.modelspace()
+        for e in msp:
+            if e.dxftype() == 'LINE':
+                p1, p2 = e.dxf.start, e.dxf.end
+                ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color='blue', linewidth=1)
+            elif e.dxftype() == 'CIRCLE':
+                center = e.dxf.center
+                radius = e.dxf.radius
+                circle = plt.Circle((center[0], center[1]), radius, color='red', fill=False, linewidth=1)
+                ax.add_patch(circle)
+        ax.set_aspect('equal')
+        ax.axis('off')
+    except Exception:
+        pass
+    return fig
+
+# 4. Main Application Logic
 if check_password():
     st.title("⚙️ AI-Powered Mechanical Manufacturing Cost Estimator")
-    st.write("Upload DXF files to process geometry and calculate cost breakdown.")
+    st.write("Upload DXF files to process geometry, view visual previews, and calculate cost breakdown.")
 
-    # Sidebar Shop Floor Rates
+    # Sidebar Shop Floor Parameters (5 Options)
     st.sidebar.header("Shop Floor Parameters")
-    material_density = st.sidebar.number_input("Material Density (g/cm³)", value=7.85) # Steel
+    material_density = st.sidebar.number_input("Material Density (g/cm³)", value=7.85)
     raw_material_rate = st.sidebar.number_input("Material Rate (Rs/kg)", value=90.0)
     laser_cutting_rate = st.sidebar.number_input("Cutting Rate (Rs/meter)", value=15.0)
+    bending_cost_rate = st.sidebar.number_input("Bending Cost (Rs/bend)", value=10.0)
+    hole_drilling_rate = st.sidebar.number_input("Hole Drilling Cost (Rs/hole)", value=5.0)
 
     # File Uploader
     uploaded_files = st.file_uploader("Upload DXF Files", type=["dxf"], accept_multiple_files=True)
@@ -80,18 +104,29 @@ if check_password():
         results = []
         total_project_cost = 0.0
 
-        for uploaded_file in uploaded_files:
+        st.subheader("🔍 DXF Visual Previews")
+        cols = st.columns(min(len(uploaded_files), 3))
+
+        for idx, uploaded_file in enumerate(uploaded_files):
             # Save temp file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".dxf") as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 tmp_path = tmp_file.name
 
             try:
+                # Show Preview in columns
+                col_idx = idx % 3
+                with cols[col_idx]:
+                    st.text(uploaded_file.name[:25])
+                    fig = plot_dxf_file(tmp_path)
+                    st.pyplot(fig)
+
                 doc = ezdxf.readfile(tmp_path)
                 msp = doc.modelspace()
 
                 # Basic Geometry Extraction
                 total_cut_length = 0.0
+                circle_count = 0
                 min_x, min_y, max_x, max_y = float('inf'), float('inf'), float('-inf'), float('-inf')
 
                 for e in msp:
@@ -102,24 +137,26 @@ if check_password():
                         min_x, max_x = min(min_x, p1[0], p2[0]), max(max_x, p1[0], p2[0])
                         min_y, max_y = min(min_y, p1[1], p2[1]), max(max_y, p1[1], p2[1])
                     elif e.dxftype() == 'CIRCLE':
+                        circle_count += 1
                         r = e.dxf.radius
                         total_cut_length += 2 * 3.14159 * r
                         cx, cy = e.dxf.center[0], e.dxf.center[1]
                         min_x, max_x = min(min_x, cx-r), max(max_x, cx+r)
                         min_y, max_y = min(min_y, cy-r), max(max_y, cy+r)
 
-                # Bounding Box Blank Calculation (assuming 5mm thickness default)
                 width = max(0.0, max_x - min_x) if min_x != float('inf') else 0.0
                 height = max(0.0, max_y - min_y) if min_y != float('inf') else 0.0
-                thickness = 5.0 # mm
+                thickness = 5.0
                 
                 volume_cm3 = (width * height * thickness) / 1000.0
                 weight_kg = (volume_cm3 * material_density) / 1000.0
 
-                # Costs
                 mat_cost = weight_kg * raw_material_rate
                 cut_cost = (total_cut_length / 1000.0) * laser_cutting_rate
-                part_cost = mat_cost + cut_cost
+                bend_cost = 2.0 * bending_cost_rate # default assumption per part
+                drill_cost = circle_count * hole_drilling_rate
+
+                part_cost = mat_cost + cut_cost + bend_cost + drill_cost
                 total_project_cost += part_cost
 
                 results.append({
@@ -136,6 +173,7 @@ if check_password():
                     os.remove(tmp_path)
 
         if results:
+            st.markdown("---")
             df_results = pd.DataFrame(results)
             st.subheader("Calculation Summary")
             st.dataframe(df_results)

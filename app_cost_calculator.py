@@ -73,7 +73,7 @@ def create_pdf_quotation(summary_df, total_cost):
     pdf.output(temp_pdf.name)
     return temp_pdf.name
 
-# 3. DXF Visual Preview Function
+# 3. Robust DXF Visual Preview Function (Supports LWPOLYLINE & Circles)
 def plot_dxf_file(tmp_path):
     fig, ax = plt.subplots(figsize=(5, 5))
     try:
@@ -83,6 +83,14 @@ def plot_dxf_file(tmp_path):
             if e.dxftype() == 'LINE':
                 p1, p2 = e.dxf.start, e.dxf.end
                 ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color='blue', linewidth=1)
+            elif e.dxftype() == 'LWPOLYLINE':
+                points = list(e.get_points(format='xy'))
+                for i in range(len(points) - 1):
+                    p1, p2 = points[i], points[i+1]
+                    ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color='blue', linewidth=1)
+                if e.closed and len(points) > 2:
+                    p1, p2 = points[-1], points[0]
+                    ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color='blue', linewidth=1)
             elif e.dxftype() == 'CIRCLE':
                 center = e.dxf.center
                 radius = e.dxf.radius
@@ -115,8 +123,6 @@ if check_password():
     raw_material_rate = st.sidebar.number_input("Material Rate (Rs/kg)", value=default_mat_rate)
     
     thickness = st.sidebar.number_input("Sheet Thickness (mm)", value=5.0, min_value=0.5, max_value=100.0, step=0.5)
-    
-    # Laser Cutting Technology dropdown hata diya gaya hai, ab direct rate input hai
     laser_cutting_rate = st.sidebar.number_input("Laser Cutting Rate (Rs/meter)", value=20.0)
     
     bending_cost_rate = st.sidebar.number_input("Bending Cost (Rs/bend)", value=10.0)
@@ -143,6 +149,7 @@ if check_password():
                     st.text(uploaded_file.name[:25])
                     fig = plot_dxf_file(tmp_path)
                     st.pyplot(fig)
+                    plt.close(fig) # Clear memory
 
                 doc = ezdxf.readfile(tmp_path)
                 msp = doc.modelspace()
@@ -158,6 +165,18 @@ if check_password():
                         total_cut_length += length
                         min_x, max_x = min(min_x, p1[0], p2[0]), max(max_x, p1[0], p2[0])
                         min_y, max_y = min(min_y, p1[1], p2[1]), max(max_y, p1[1], p2[1])
+                    elif e.dxftype() == 'LWPOLYLINE':
+                        points = list(e.get_points(format='xy'))
+                        for i in range(len(points) - 1):
+                            p1, p2 = points[i], points[i+1]
+                            length = ((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)**0.5
+                            total_cut_length += length
+                            min_x, max_x = min(min_x, p1[0], p2[0]), max(max_x, p1[0], p2[0])
+                            min_y, max_y = min(min_y, p1[1], p2[1]), max(max_y, p1[1], p2[1])
+                        if e.closed and len(points) > 2:
+                            p1, p2 = points[-1], points[0]
+                            length = ((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)**0.5
+                            total_cut_length += length
                     elif e.dxftype() == 'CIRCLE':
                         circle_count += 1
                         r = e.dxf.radius

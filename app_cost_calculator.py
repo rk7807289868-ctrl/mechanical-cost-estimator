@@ -87,13 +87,29 @@ def plot_dxf_file(tmp_path):
 # 4. Main Application Logic
 if check_password():
     st.title("⚙️ AI-Powered Mechanical Manufacturing Cost Estimator")
-    st.write("Upload DXF files to process geometry, view visual previews, and calculate cost breakdown.")
+    st.write("Upload DXF files to process geometry, customize parameters, view previews, and calculate cost breakdown.")
 
-    # Sidebar Shop Floor Parameters (5 Options)
+    # Sidebar Shop Floor Parameters with Material, Thickness & Cutting Options
     st.sidebar.header("Shop Floor Parameters")
-    material_density = st.sidebar.number_input("Material Density (g/cm³)", value=7.85)
-    raw_material_rate = st.sidebar.number_input("Material Rate (Rs/kg)", value=90.0)
-    laser_cutting_rate = st.sidebar.number_input("Cutting Rate (Rs/meter)", value=15.0)
+    
+    material_type = st.sidebar.selectbox("Select Material", ["Mild Steel (MS)", "Stainless Steel (SS)", "Aluminium"])
+    
+    # Dynamic default values based on material selection
+    if material_type == "Mild Steel (MS)":
+        default_density, default_mat_rate = 7.85, 85.0
+    elif material_type == "Stainless Steel (SS)":
+        default_density, default_mat_rate = 8.00, 180.0
+    else:
+        default_density, default_mat_rate = 2.70, 240.0
+
+    material_density = st.sidebar.number_input("Material Density (g/cm³)", value=default_density)
+    raw_material_rate = st.sidebar.number_input("Material Rate (Rs/kg)", value=default_mat_rate)
+    
+    thickness = st.sidebar.number_input("Sheet Thickness (mm)", value=5.0, min_value=0.5, max_value=100.0, step=0.5)
+    
+    laser_cutting_type = st.sidebar.selectbox("Laser Cutting Technology", ["Fiber Laser (Standard)", "CO2 Laser (High Precision)"])
+    laser_cutting_rate = st.sidebar.number_input("Cutting Rate (Rs/meter)", value=20.0 if "Fiber" in laser_cutting_type else 30.0)
+    
     bending_cost_rate = st.sidebar.number_input("Bending Cost (Rs/bend)", value=10.0)
     hole_drilling_rate = st.sidebar.number_input("Hole Drilling Cost (Rs/hole)", value=5.0)
 
@@ -114,7 +130,6 @@ if check_password():
                 tmp_path = tmp_file.name
 
             try:
-                # Show Preview in columns
                 col_idx = idx % 3
                 with cols[col_idx]:
                     st.text(uploaded_file.name[:25])
@@ -124,7 +139,6 @@ if check_password():
                 doc = ezdxf.readfile(tmp_path)
                 msp = doc.modelspace()
 
-                # Basic Geometry Extraction
                 total_cut_length = 0.0
                 circle_count = 0
                 min_x, min_y, max_x, max_y = float('inf'), float('inf'), float('-inf'), float('-inf')
@@ -146,14 +160,14 @@ if check_password():
 
                 width = max(0.0, max_x - min_x) if min_x != float('inf') else 0.0
                 height = max(0.0, max_y - min_y) if min_y != float('inf') else 0.0
-                thickness = 5.0
                 
+                # Volume calculation using selected thickness
                 volume_cm3 = (width * height * thickness) / 1000.0
                 weight_kg = (volume_cm3 * material_density) / 1000.0
 
                 mat_cost = weight_kg * raw_material_rate
                 cut_cost = (total_cut_length / 1000.0) * laser_cutting_rate
-                bend_cost = 2.0 * bending_cost_rate # default assumption per part
+                bend_cost = 2.0 * bending_cost_rate 
                 drill_cost = circle_count * hole_drilling_rate
 
                 part_cost = mat_cost + cut_cost + bend_cost + drill_cost
@@ -161,10 +175,11 @@ if check_password():
 
                 results.append({
                     "File Name": uploaded_file.name,
+                    "Material": material_type,
+                    "Thick (mm)": thickness,
                     "Blank Size (mm)": f"{width:.1f} x {height:.1f}",
                     "Weight (kg)": weight_kg,
-                    "Cut Length (mm)": total_cut_length,
-                    "Total Cost": part_cost
+                    "Total Cost (Rs.)": part_cost
                 })
             except Exception as e:
                 st.error(f"Error reading {uploaded_file.name}: {e}")

@@ -116,8 +116,8 @@ if check_password():
     
     thickness = st.sidebar.number_input("Sheet Thickness (mm)", value=5.0, min_value=0.5, max_value=100.0, step=0.5)
     
-    laser_cutting_type = st.sidebar.selectbox("Laser Cutting Technology", ["Fiber Laser (Standard)", "CO2 Laser (High Precision)"])
-    laser_cutting_rate = st.sidebar.number_input("Laser Cutting Rate (Rs/meter)", value=20.0 if "Fiber" in laser_cutting_type else 30.0)
+    # Laser Cutting Technology dropdown hata diya gaya hai, ab direct rate input hai
+    laser_cutting_rate = st.sidebar.number_input("Laser Cutting Rate (Rs/meter)", value=20.0)
     
     bending_cost_rate = st.sidebar.number_input("Bending Cost (Rs/bend)", value=10.0)
     hole_drilling_rate = st.sidebar.number_input("Hole Drilling Cost (Rs/hole)", value=5.0)

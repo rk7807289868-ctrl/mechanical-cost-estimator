@@ -26,7 +26,7 @@ def check_password():
         return False
     return True
 
-# 2. PDF Generator Function
+# 2. PDF Generator Function with Cost Breakdown
 def create_pdf_quotation(summary_df, total_cost):
     pdf = FPDF()
     pdf.add_page()
@@ -42,21 +42,25 @@ def create_pdf_quotation(summary_df, total_cost):
     pdf.ln(5)
     
     # Table Header
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(50, 10, "File Name", 1)
-    pdf.cell(35, 10, "Weight (kg)", 1)
-    pdf.cell(45, 10, "Cut Length (mm)", 1)
-    pdf.cell(45, 10, "Cost (Rs.)", 1)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(45, 10, "File Name", 1)
+    pdf.cell(25, 10, "Weight(kg)", 1)
+    pdf.cell(30, 10, "Cut Len(mm)", 1)
+    pdf.cell(30, 10, "Mat. Cost", 1)
+    pdf.cell(30, 10, "Cut Cost", 1)
+    pdf.cell(30, 10, "Total (Rs.)", 1)
     pdf.ln()
     
     # Table Rows
-    pdf.set_font("Arial", "", 10)
+    pdf.set_font("Arial", "", 9)
     for _, row in summary_df.iterrows():
-        file_nm = str(row.get('File Name', 'Part'))[:20]
-        pdf.cell(50, 10, file_nm, 1)
-        pdf.cell(35, 10, f"{row.get('Weight (kg)', 0):.2f}", 1)
-        pdf.cell(45, 10, f"{row.get('Cut Length (mm)', 0):.2f}", 1)
-        pdf.cell(45, 10, f"{row.get('Total Cost', 0):.2f}", 1)
+        file_nm = str(row.get('File Name', 'Part'))[:18]
+        pdf.cell(45, 10, file_nm, 1)
+        pdf.cell(25, 10, f"{row.get('Weight (kg)', 0):.2f}", 1)
+        pdf.cell(30, 10, f"{row.get('Cut Length (mm)', 0):.1f}", 1)
+        pdf.cell(30, 10, f"{row.get('Mat. Cost (Rs.)', 0):.1f}", 1)
+        pdf.cell(30, 10, f"{row.get('Cut Cost (Rs.)', 0):.1f}", 1)
+        pdf.cell(30, 10, f"{row.get('Total Cost (Rs.)', 0):.1f}", 1)
         pdf.ln()
         
     temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
@@ -89,12 +93,11 @@ if check_password():
     st.title("⚙️ AI-Powered Mechanical Manufacturing Cost Estimator")
     st.write("Upload DXF files to process geometry, customize parameters, view previews, and calculate cost breakdown.")
 
-    # Sidebar Shop Floor Parameters with Material, Thickness & Cutting Options
+    # Sidebar Shop Floor Parameters
     st.sidebar.header("Shop Floor Parameters")
     
     material_type = st.sidebar.selectbox("Select Material", ["Mild Steel (MS)", "Stainless Steel (SS)", "Aluminium"])
     
-    # Dynamic default values based on material selection
     if material_type == "Mild Steel (MS)":
         default_density, default_mat_rate = 7.85, 85.0
     elif material_type == "Stainless Steel (SS)":
@@ -108,7 +111,7 @@ if check_password():
     thickness = st.sidebar.number_input("Sheet Thickness (mm)", value=5.0, min_value=0.5, max_value=100.0, step=0.5)
     
     laser_cutting_type = st.sidebar.selectbox("Laser Cutting Technology", ["Fiber Laser (Standard)", "CO2 Laser (High Precision)"])
-    laser_cutting_rate = st.sidebar.number_input("Cutting Rate (Rs/meter)", value=20.0 if "Fiber" in laser_cutting_type else 30.0)
+    laser_cutting_rate = st.sidebar.number_input("Laser Cutting Rate (Rs/meter)", value=20.0 if "Fiber" in laser_cutting_type else 30.0)
     
     bending_cost_rate = st.sidebar.number_input("Bending Cost (Rs/bend)", value=10.0)
     hole_drilling_rate = st.sidebar.number_input("Hole Drilling Cost (Rs/hole)", value=5.0)
@@ -124,7 +127,6 @@ if check_password():
         cols = st.columns(min(len(uploaded_files), 3))
 
         for idx, uploaded_file in enumerate(uploaded_files):
-            # Save temp file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".dxf") as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 tmp_path = tmp_file.name
@@ -161,7 +163,6 @@ if check_password():
                 width = max(0.0, max_x - min_x) if min_x != float('inf') else 0.0
                 height = max(0.0, max_y - min_y) if min_y != float('inf') else 0.0
                 
-                # Volume calculation using selected thickness
                 volume_cm3 = (width * height * thickness) / 1000.0
                 weight_kg = (volume_cm3 * material_density) / 1000.0
 
@@ -177,8 +178,10 @@ if check_password():
                     "File Name": uploaded_file.name,
                     "Material": material_type,
                     "Thick (mm)": thickness,
-                    "Blank Size (mm)": f"{width:.1f} x {height:.1f}",
                     "Weight (kg)": weight_kg,
+                    "Cut Length (mm)": total_cut_length,
+                    "Mat. Cost (Rs.)": mat_cost,
+                    "Cut Cost (Rs.)": cut_cost,
                     "Total Cost (Rs.)": part_cost
                 })
             except Exception as e:
@@ -190,7 +193,7 @@ if check_password():
         if results:
             st.markdown("---")
             df_results = pd.DataFrame(results)
-            st.subheader("Calculation Summary")
+            st.subheader("Calculation Summary & Cost Breakdown")
             st.dataframe(df_results)
 
             st.success(f"**Total Estimated Project Cost: Rs. {total_project_cost:,.2f}**")

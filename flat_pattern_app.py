@@ -3,27 +3,13 @@ import math
 
 math_app.set_page_config(page_title="Sheet Metal Flat Pattern Calculator", page_icon="📐", layout="centered")
 
-# --- YAHAN SE PASSWORD PROTECTION START HOTA HAI ---
+# --- PASSWORD PROTECTION ---
 password = math_app.sidebar.text_input("🔒 Enter Password to Access App", type="password")
 
-# Aap "Mechanical@123" ki jagah koi bhi apna pasandida password rakh sakte hain
 if password != "Mechanical@123":
     math_app.warning("⚠️ Please enter the correct password in the sidebar to view the calculator.")
-    math_app.stop()  # Yeh code aage ka app run nahi hone dega jab tak password sahi na ho
-# --- PASSWORD PROTECTION END ---
-
-math_app.title("📐 Sheet Metal Flat Pattern & Bend Calculator")
-math_app.markdown("Calculate **Bend Allowance (BA)**, **Bend Deduction (BD)**, and **Developed Flat Length** for precise sheet metal manufacturing.")
-
-math_app.sidebar.header("⚙️ Input Parameters")
-
-# Material Selection
-material = math_app.sidebar.selectbox("Select Material", ["Mild Steel (MS)", "Stainless Steel (SS)", "Aluminium"])
-
-# (Baki ka aapka purana code yahan se aage waise hi rahega...)import streamlit as math_app
-import math
-
-math_app.set_page_config(page_title="Sheet Metal Flat Pattern Calculator", page_icon="📐", layout="centered")
+    math_app.stop()  # Yeh code tab tak rok kar rakhega jab tak sahi password na dala jaye
+# ---------------------------
 
 math_app.title("📐 Sheet Metal Flat Pattern & Bend Calculator")
 math_app.markdown("Calculate **Bend Allowance (BA)**, **Bend Deduction (BD)**, and **Developed Flat Length** for precise sheet metal manufacturing.")
@@ -47,18 +33,10 @@ flange_1 = math_app.sidebar.number_input("Flange Length 1 (Leg A) in mm", min_va
 flange_2 = math_app.sidebar.number_input("Flange Length 2 (Leg B) in mm", min_value=0.0, max_value=1000.0, value=50.0, step=1.0)
 
 # Calculation Logic
-# Bend Allowance Formula: BA = (Pi * Angle / 180) * (R + K * t)
 rad_angle = math.radians(bend_angle)
-bend_allowance = (rad_angle / math.pi) * (math.pi / 180 * 180) # Simplified radian conversion check
 bend_allowance = (bend_angle * math.pi / 180.0) * (inner_radius + (k_factor * thickness))
-
-# External Setback (OSSB) = (R + t) * tan(Angle / 2)
 ossb = (inner_radius + thickness) * math.tan(math.radians(bend_angle / 2.0))
-
-# Bend Deduction (BD) = 2 * OSSB - BA
 bend_deduction = (2.0 * ossb) - bend_allowance
-
-# Total Flat Length for L-Bend
 total_flat_length = flange_1 + flange_2 - bend_deduction
 
 # Main Screen Display

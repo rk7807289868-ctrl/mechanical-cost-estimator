@@ -3,6 +3,28 @@ import math
 
 math_app.set_page_config(page_title="Sheet Metal Flat Pattern Calculator", page_icon="📐", layout="centered")
 
+# --- YAHAN SE PASSWORD PROTECTION START HOTA HAI ---
+password = math_app.sidebar.text_input("🔒 Enter Password to Access App", type="password")
+
+# Aap "Mechanical@123" ki jagah koi bhi apna pasandida password rakh sakte hain
+if password != "Mechanical@123":
+    math_app.warning("⚠️ Please enter the correct password in the sidebar to view the calculator.")
+    math_app.stop()  # Yeh code aage ka app run nahi hone dega jab tak password sahi na ho
+# --- PASSWORD PROTECTION END ---
+
+math_app.title("📐 Sheet Metal Flat Pattern & Bend Calculator")
+math_app.markdown("Calculate **Bend Allowance (BA)**, **Bend Deduction (BD)**, and **Developed Flat Length** for precise sheet metal manufacturing.")
+
+math_app.sidebar.header("⚙️ Input Parameters")
+
+# Material Selection
+material = math_app.sidebar.selectbox("Select Material", ["Mild Steel (MS)", "Stainless Steel (SS)", "Aluminium"])
+
+# (Baki ka aapka purana code yahan se aage waise hi rahega...)import streamlit as math_app
+import math
+
+math_app.set_page_config(page_title="Sheet Metal Flat Pattern Calculator", page_icon="📐", layout="centered")
+
 math_app.title("📐 Sheet Metal Flat Pattern & Bend Calculator")
 math_app.markdown("Calculate **Bend Allowance (BA)**, **Bend Deduction (BD)**, and **Developed Flat Length** for precise sheet metal manufacturing.")
 
